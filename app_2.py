@@ -5,7 +5,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import coordinate_to_tuple
 
 def get_column_letter(n):
-    result = ''
+    result = ""
     while n > 0:
         n, remainder = divmod(n - 1, 26)
         result = chr(65 + remainder) + result
@@ -17,20 +17,38 @@ st.title("📊 Participant Data Restructuring Tool")
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
-    start_cell = st.text_input("Enter top-left cell of the table (e.g., B1)", value="B1").strip().upper()
-    num_rows = st.number_input("Number of data rows (including time)", min_value=1, step=1)
-    num_cols = st.number_input("Number of data columns (including time column)", min_value=1, step=1)
+    start_cell = st.text_input(
+        "Enter top-left cell of the table (e.g., B1)",
+        value="B1"
+    ).strip().upper()
+    num_rows = st.number_input(
+        "Number of data rows (including time)",
+        min_value=1,
+        step=1
+    )
+    num_cols = st.number_input(
+        "Number of data columns (including time column)",
+        min_value=1,
+        step=1
+    )
 
     if st.button("Convert Excel File"):
+        # Load workbook and first sheet for structure
         wb = load_workbook(uploaded_file, data_only=True)
         first_sheet = wb.sheetnames[0]
         ws_sample = wb[first_sheet]
+
+        # Get numeric start row and column from cell like "B1"
         start_row, start_col = coordinate_to_tuple(start_cell)
 
-        # Extract headers (skip time column)
-        headers = [
+        # Extract headers (skip time column) and replace spaces with underscores
+        raw_headers = [
             ws_sample.cell(row=start_row, column=start_col + i).value
             for i in range(1, num_cols)
+        ]
+        headers = [
+            "" if h is None else str(h).replace(" ", "_")
+            for h in raw_headers
         ]
 
         # Extract time values (skip header row)
@@ -39,7 +57,7 @@ if uploaded_file:
             for i in range(1, num_rows)
         ]
 
-        # Generate column names like "Tcore: 10.0"
+        # Generate column names like "Tcore_1: 10.0"
         column_names = [f"{header}: {t}" for header in headers for t in time_values]
 
         # Extract values from all sheets
@@ -51,7 +69,10 @@ if uploaded_file:
             row_values = []
             for col_offset in range(1, num_cols):
                 for row_offset in range(1, num_rows):
-                    val = ws.cell(row=start_row + row_offset, column=start_col + col_offset).value
+                    val = ws.cell(
+                        row=start_row + row_offset,
+                        column=start_col + col_offset
+                    ).value
                     row_values.append(val)
             data.append(row_values)
             participant_names.append(sheet)
@@ -63,6 +84,7 @@ if uploaded_file:
         # Save to BytesIO
         output = BytesIO()
         df.to_excel(output, index=False)
+
         st.success("✅ File processed successfully!")
 
         st.download_button(
