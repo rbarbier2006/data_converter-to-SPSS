@@ -12,7 +12,7 @@ def get_column_letter(n):
     return result
 
 st.set_page_config(page_title="Participant Data Converter", layout="centered")
-st.title("📊 Participant Data Restructuring Tool")
+st.title("Participant Data Restructuring Tool")
 
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
@@ -41,24 +41,30 @@ if uploaded_file:
         # Get numeric start row and column from cell like "B1"
         start_row, start_col = coordinate_to_tuple(start_cell)
 
-        # Extract headers (skip time column) and replace spaces with underscores
+        # Extract raw headers (skip time column)
         raw_headers = [
             ws_sample.cell(row=start_row, column=start_col + i).value
             for i in range(1, num_cols)
         ]
-        headers = [
-            "" if h is None else str(h).replace(" ", "_")
-            for h in raw_headers
-        ]
+        headers = ["" if h is None else str(h) for h in raw_headers]
 
         # Extract time values (skip header row)
-        time_values = [
+        raw_time_values = [
             ws_sample.cell(row=start_row + i, column=start_col).value
             for i in range(1, num_rows)
         ]
+        time_values = ["" if t is None else str(t) for t in raw_time_values]
 
-        # Generate column names like "Tcore_1: 10.0"
-        column_names = [f"{header}: {t}" for header in headers for t in time_values]
+        # Generate cleaned column names:
+        # 1) Combine as "Header_TimeValue"
+        # 2) Replace spaces with underscores
+        # 3) Remove colons
+        column_names = []
+        for header in headers:
+            for t in time_values:
+                combined = f"{header}_{t}"
+                clean = combined.replace(" ", "_").replace(":", "")
+                column_names.append(clean)
 
         # Extract values from all sheets
         data = []
@@ -85,10 +91,10 @@ if uploaded_file:
         output = BytesIO()
         df.to_excel(output, index=False)
 
-        st.success("✅ File processed successfully!")
+        st.success("File processed successfully.")
 
         st.download_button(
-            label="📥 Download Excel File",
+            label="Download Excel File",
             data=output.getvalue(),
             file_name="participant_time_data_flexible.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
